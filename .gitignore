@@ -5,3 +5,15 @@
 .vscode
 .vscode
 
+# Sensitive information
+.env
+secrets.h
+GoogleCredential
+
+
+# text files
+*.docx
+
+# development files
+testing.ipynb
+UIDesign
