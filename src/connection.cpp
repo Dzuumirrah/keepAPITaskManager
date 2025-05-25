@@ -2,8 +2,98 @@
 // like WiFi, MQTT, etc.
 
 #include "config.h"
+#include <vector>
+#include <ArduinoJson.h>
 
 byte MCmacAdrr[6];
+// --------------------------------------------------------
+//                Parsing and storing tasks
+// --------------------------------------------------------
+String lastPayload = "";
+std::vector<RawTask> rawTasks;
+void parseJson(const String& payload) {
+    JsonDocument doc;
+    deserializeJson(doc, payload);
+    JsonArray arr = doc.as<JsonArray>();
+
+    rawTasks.clear();
+    for (JsonObject o : arr) {
+        RawTask r;
+        r.list_id     = o["list_id"].as<String>();
+        r.list_title  = o["list_title"].as<String>();
+        r.task_id     = o["task_id"].as<String>();
+        r.parentId    = o["childOf"].as<String>();
+        r.notes       = o["notes"].as<String>();
+        r.position    = o["position"].as<int>();
+        r.title       = o["title"].as<String>();
+        r.completed   = o["status"].as<bool>();
+        r.due         = o["due"].as<String>();
+        rawTasks.push_back(r);
+    }
+}
+
+std::vector<Task*> roots;
+std::vector<Task*> allTasks;
+void buildTree() {
+    // 1) Create Task objects
+    allTasks.clear();
+    for (const auto& r : rawTasks) {
+        Task* t = new Task{
+        r.task_id,
+        r.title,
+        r.completed,
+        r.due,
+        r.notes,
+        r.position,
+        r.parentId,
+        {}  // empty children
+        };
+        allTasks.push_back(t);
+    }
+
+    // 2) Attach children or collect roots
+    roots.clear();
+    for (auto* t : allTasks) {
+        if (t->parentId.length() > 0) {
+        // find parent by linear search
+        for (auto* p : allTasks) {
+            if (p->id == t->parentId) {
+            p->children.push_back(t);
+            break;
+            }
+        }
+        } else {
+        roots.push_back(t);
+        }
+    }
+
+    // 3) Sort each node's children by position (simple bubble sort)
+    auto sortLevel = [&](std::vector<Task*>& list) {
+        int n = list.size();
+        for (int i = 0; i < n - 1; i++) {
+        for (int j = 0; j < n - 1 - i; j++) {
+            if (list[j]->position > list[j+1]->position) {
+            Task* tmp = list[j];
+            list[j] = list[j+1];
+            list[j+1] = tmp;
+            }
+        }
+        }
+    };
+
+    // 4) Recursively sort
+    std::function<void(std::vector<Task*>&)> recurseSort = [&](std::vector<Task*>& list) {
+        sortLevel(list);
+        for (auto* t : list) {
+        if (t->children.size()) recurseSort(t->children);
+        }
+    };
+    recurseSort(roots);
+}
+
+// --------------------------------------------------------
+//                        WI-Fi Setup
+// --------------------------------------------------------
 
 void setupWiFi(const char* ssid, const char* password) {
     WiFi.setHostname("Dzuu-ESP32");
@@ -31,6 +121,11 @@ void setupWiFi(const char* ssid, const char* password) {
     Serial.println("\n\n\n\n");
 }
 
+
+// --------------------------------------------------------
+//                        MQTT Setup
+// --------------------------------------------------------
+
 void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port,const char* topic) {
     mqtt.setBufferSize(512); // Adjust size as needed
     mqtt.setServer(mqtt_server, mqtt_port);
@@ -51,17 +146,24 @@ void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port,const char* t
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
-    // Store message taken from MQTT inside "msg"
-    String msg;
-    for (int i = 0; i < length; i++){
-        msg += (char)payload[i];
+    // 1) Copy the payload into a String
+    String incoming;
+    for (unsigned int i = 0; i < length; i++) {
+        incoming += char(payload[i]);
     }
-    
-    Serial.print("[MQTT] Message arrived on [");
-    Serial.print(topic);
-    Serial.println("]:\n");
-    Serial.println(msg);
+
+    // 2) Quick check: is it identical to last time?
+    if (incoming == lastPayload) {
+        // nothing changed → skip
+        return;
+    }
+
+    // 3) It’s new or changed!
+    lastPayload = incoming;         // remember it
+    parseJson(incoming);            // fill rawTasks[]
+    buildTree();                    // rebuild roots/allTasks
 }
+
 
 
 
