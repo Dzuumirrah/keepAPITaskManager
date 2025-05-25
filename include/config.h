@@ -1,6 +1,7 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include "task_types.h"
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
@@ -24,6 +25,29 @@ void setupWiFi(const char* ssid, const char* password);
 void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port, const char* mqtt_topic_tasks);
 // Callback for MQTT communication.
 void mqttCallback(char* topic, byte* payload, unsigned int length);
+
+// --------------------------------------------------------
+//                TASK PARSING AND STORAGE
+// --------------------------------------------------------
+// the “roots” of your task forest:
+extern String lastPayload;
+extern std::vector<Task*> roots;
+void parseJson(const String& payload);
+void buildTree();
+
+// --------------------------------------------------------
+//                    BUTTONS AND PAGES
+// --------------------------------------------------------
+// Function declarations and pointers for button actions
+void buttonUpAction();
+void buttonDownAction();
+void buttonYesAction();
+void buttonNoAction();
+extern void (*ButtonActionPointers [4])();
+// Pointers to current active page
+extern uint8_t PAGE_POINTERS; 
+// and task cursor
+extern uint16_t TASKS_POINTERS;
 
 // -------------------------------------------------------------------
 // ACTION CONFIGURATION

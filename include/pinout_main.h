@@ -8,10 +8,10 @@
 #include <Arduino.h>
 
 // Pins for Buttons
-constexpr int BUTTON_YES    = 0; 
-constexpr int BUTTON_NO     = 1; 
-constexpr int BUTTON_UP     = 2; 
-constexpr int BUTTON_DOWN   = 3; 
+// constexpr int BUTTON_YES    = 0; 
+// constexpr int BUTTON_NO     = 1; 
+// constexpr int BUTTON_UP     = 2; 
+// constexpr int BUTTON_DOWN   = 3; 
 
 // // See Setup204_ESP32_TouchDown.h for the TFT pinout.
 // The declaration of the TFT pins is done in the TFT_eSPI library.

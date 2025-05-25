@@ -85,6 +85,7 @@ def fetch_all_tasks(creds):
                 'task_id':      t.get('id'),
                 'childOf':      t.get('parent'),
                 'position':     t.get('position'),
+                'notes':        t.get('notes'),
                 'title':        t.get('title'),
                 'status':       t.get('status'),
                 'created':      t.get('created'),
