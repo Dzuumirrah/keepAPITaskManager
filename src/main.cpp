@@ -75,6 +75,7 @@ void loop() {
             ButtonActionPointers[i]();
             buttonPressed[i] = true; // Mark button as pressed
             needDisplayUpdate = true; // Set flag to update display
+            Serial.printf("TASK_POINTER: %d\n", TASKS_POINTER);
             delay(100); // Debounce delay
         } else if (digitalRead(BUTTONS[i]) == HIGH) {
             buttonPressed[i] = false; // Mark button as not pressed
@@ -122,7 +123,9 @@ void loop() {
             HelpingLines();
         }
         drawStatusBar(connectionStatus, WiFi.SSID().c_str(), TITLE, currentTime);
-        drawTasks(roots, FIRST_TASK_Y_INDENT, TASKS_X_INDENT, CHILD_INDENT, TASKS_POINTER, MAX_TASK_DISPLAY);
+        // Highlight active task
+        tft.fillRect(0, FIRST_TASK_Y_INDENT + (48 * TASKS_POINTER_DISPLAY_POSITION), tft.width(), 48, TFT_LIGHTGREY);
+        drawTasks(allTasks, FIRST_TASK_Y_INDENT, TASKS_X_INDENT, CHILD_INDENT, TASKS_POINTER, MAX_TASK_DISPLAY);
         // drawTasks(roots, FIRST_TASK_Y_INDENT, TASKS_X_INDENT, CHILD_INDENT);
         needDisplayUpdate = false;
     }

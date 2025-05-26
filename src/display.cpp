@@ -63,20 +63,30 @@ void HelpingLines() {
   }
 }
 
+static int startIdx = 0; // Keep track of the starting index for scrolling
 void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent, 
-                int ChildIndent, int TASK_POINTER, const uint8_t MAX_TASKS_DISPLAYED) {
-  const int boxSize = 18;
-  const int containerHeight = 48;
-  const int textIndent = 16; // Indent for text after checkbox
-  const int radius = boxSize / 2;
-  int text_y_indent = FirstY; // Y indent for text
-
+  int ChildIndent, int TASK_POINTER, const uint8_t MAX_TASKS_DISPLAYED) {
+    const int boxSize = 18;
+    const int containerHeight = 48;
+    const int textIndent = 16; // Indent for text after checkbox
+    const int radius = boxSize / 2;
+    int text_y_indent = FirstY; // Y indent for text
+  
+  // Adjust startIdx based on TASK_POINTER movement
+  if (TASK_POINTER >= startIdx + MAX_TASKS_DISPLAYED && 
+        (TASKS_POINTER_DISPLAY_POSITION == MAX_TASKS_DISPLAYED - 1 
+        || TASKS_POINTER_DISPLAY_POSITION == 0)) {
+    startIdx = TASK_POINTER - MAX_TASKS_DISPLAYED; // Scroll down when TASK_POINTER exceeds the visible range
+  } else if (TASK_POINTER < MAX_TASKS_DISPLAYED) {
+    startIdx = 0; // Scroll up when TASK_POINTER goes above the visible range
+  }
   // Only display up to MAX_TASKS_DISPLAYED tasks, starting from TASK_POINTER
-  int endIdx = std::min((int)list.size(), TASK_POINTER + MAX_TASKS_DISPLAYED);
-  for (int i = TASK_POINTER; i < endIdx; ++i) {
+  int endIdx = std::min((int)list.size(), startIdx + MAX_TASKS_DISPLAYED);
+  for (int i = startIdx; i < endIdx; ++i) {
     Task* t = list[i];
     int cx = TaskIndent + radius;
     int cy = text_y_indent + (containerHeight / 2);
+
 
     // 1) checkbox as circle
     if (t->completed) {
@@ -97,7 +107,15 @@ void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent,
       tft.setCursor(TaskIndent + boxSize + textIndent, text_y_indent + 35);
       tft.setTextColor(TFT_BLACK);
       tft.setFreeFont(&FreeSerifItalic9pt7b);
-      tft.print(t->due);
+      // Convert RFC 3339 timestamp to desired format
+      struct tm timeinfo;
+      if (strptime(t->due.c_str(), "%Y-%m-%dT%H:%M:%S", &timeinfo)) {
+        char buffer[32];
+        strftime(buffer, sizeof(buffer), "%a, %d %b, %H:%M", &timeinfo);
+        tft.print(buffer);
+      } else {
+        tft.print("");
+      }
     }
     text_y_indent += containerHeight;
     
@@ -118,7 +136,7 @@ void flattenTasks(const std::vector<Task*>& roots, std::vector<std::pair<Task*, 
     }
   }
 }
-
+/*
 void drawTasksFlat(const std::vector<Task*>& roots, int& FirstY, int TaskIndent, 
   int ChildIndent, int TASK_POINTER, const uint8_t MAX_TASKS_DISPLAYED) {
   // Flatten the tree
@@ -243,7 +261,7 @@ void drawTasksFlatWithPointer(const std::vector<Task*>& roots,
     y += containerH;
   }
 }
-
+*/
 void drawStatusBar(bool (&ConnectionStatus)[2], String Wifi_SSID, String Title, String ClockTime) {
   // If MQTT and WiFi are connected
   if (ConnectionStatus[0] && ConnectionStatus[1]) {

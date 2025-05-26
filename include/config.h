@@ -31,6 +31,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length);
 // the “roots” of your task forest:
 extern String lastPayload;
 extern std::vector<Task*> roots;
+extern std::vector<Task*> allTasks;
 void parseJson(const String& payload);
 void buildTree();
 
@@ -48,6 +49,7 @@ extern uint8_t PAGE_POINTERS;
 // and task cursor
 extern const uint8_t MAX_TASK_DISPLAY;
 extern int TASKS_POINTER;
+extern int TASKS_POINTER_DISPLAY_POSITION;
 
 // -------------------------------------------------------------------
 //                  DISPLAY CONFIGURATION
