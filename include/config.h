@@ -9,7 +9,7 @@
 #include <SPI.h>
 
 // -------------------------------------------------------------------
-// CONNECTION CONFIGURATION
+//                CONNECTION CONFIGURATION
 // -------------------------------------------------------------------
 
 // Class configuration for MQTT connection
@@ -17,7 +17,6 @@ extern PubSubClient mqtt;
 extern TFT_eSPI tft;
 
 extern byte MCmacAdrr[6]; // Array to store the MAC address as bytes
-
 // WiFi Setup. Can be used to generate the MAC address of the ESP32 device
 // and store it in the MCmacAdrr array as a global variable.
 void setupWiFi(const char* ssid, const char* password);
@@ -47,27 +46,48 @@ extern void (*ButtonActionPointers [4])();
 // Pointers to current active page
 extern uint8_t PAGE_POINTERS; 
 // and task cursor
-extern uint16_t TASKS_POINTERS;
+extern const uint8_t MAX_TASK_DISPLAY;
+extern int TASKS_POINTER;
 
 // -------------------------------------------------------------------
-// ACTION CONFIGURATION
-// -------------------------------------------------------------------
-extern uint8_t TASK_MAX_COUNT;
-
-
-
-// -------------------------------------------------------------------
-// DISPLAY CONFIGURATION
+//                  DISPLAY CONFIGURATION
 // -------------------------------------------------------------------
 // Display rotation setting
 // Set as 1,2,3, or 4
 extern byte DISPLAY_ROTATION;
+extern bool SPLASH_SCREEN; // Flag to show splash screen on first boot
+extern bool needDisplayUpdate;
 // Pointer to the cursor position on the TFT display
-extern uint16_t CURSOR_POINTER;
 // show splash screen on TFT display on first boot
-void SplashScreen();
+// parameters:
+// - INIT: Flag for init process 
+//   0 just Title, 1 for WiFi, 2 for MQTT   
+void SplashScreen(int INIT = 0);
 // Show helping lines on TFT display for developing convenience
 void HelpingLines();
 // Testing ILI9488 display
 void testDisplay();
+// Draw tasks on the TFT display
+// parameters:
+// - list: vector of Task pointers to draw
+// - FirstY: reference to the first Y position to start drawing tasks
+// - TaskIndent: horizontal indent for the task container
+// - ChildIndent: horizontal indent for child tasks
+void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent, 
+                int ChildIndent, int TASK_POINTER, const uint8_t MAX_TASKS_DISPLAYED);
+// Draw status bar on the TFT display
+// parameters:
+// - ConnectionStatus: array of two boolean pointers for WiFi and MQTT connection status
+// - Wifi_SSID: WiFi SSID string. Change to "connecting..." if WIFI not connected
+// - Title: title string to display. Change to "Connecting..." if MQTT not connected
+// - Clock: clock string to display
+void drawStatusBar(bool (&ConnectionStatus)[2], String Wifi_SSID, String Title, String ClockTime);
+
+// --------------------------------------------------------
+//                    RTC CONFIGURATION
+// --------------------------------------------------------
+// Function to setup the RTC (Real Time Clock) using NTP
+void setupRTC();
+// Function to get the current time in hh:mm format
+String getCurrentTime();
 #endif

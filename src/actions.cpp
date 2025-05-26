@@ -13,10 +13,16 @@ void (*ButtonActionPointers [4])() = {
 // Function declarations for button actions
 void buttonUpAction() {
     Serial.println("Button Up Pressed");
+    if (!(TASKS_POINTER >= roots.size() - 1)) {
+        TASKS_POINTER++; // Wrap around to the first task
+    }
 };
 
 void buttonDownAction() {
     Serial.println("Button Down Pressed");
+    if (!(TASKS_POINTER <= 0)) {
+        TASKS_POINTER--; 
+    }
 };
 
 void buttonYesAction() {

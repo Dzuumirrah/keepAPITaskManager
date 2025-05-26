@@ -9,9 +9,9 @@ struct RawTask {
   String list_title;
   String task_id;
   String parentId;
-  int    position;
+  int position;
   String title;
-  bool   completed;
+  bool completed;
   String due;
   String notes;        // ← new field for your description
 };
@@ -20,10 +20,10 @@ struct RawTask {
 struct Task {
   String id;
   String title;
-  bool   completed;
+  bool completed;
   String due;
   String notes;        // ← carry through the description
-  int    position;
+  int position;
   String parentId;
   std::vector<Task*> children;
 };

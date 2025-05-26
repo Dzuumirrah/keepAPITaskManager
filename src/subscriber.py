@@ -1,11 +1,14 @@
 import paho.mqtt.client as mqtt
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 mqtt_broker             = os.getenv("MQTT_BROKER")
 mqtt_port               = int(os.getenv("MQTT_PORT"))
 mqtt_topic              = os.getenv("MQTT_TOPIC_T")
 
 mqttClient = mqtt.Client(client_id="Subscriber")
+
 
 @mqttClient.connect_callback()
 def on_connect(client, userdata, connect_flags, reason_code, properties):

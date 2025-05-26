@@ -98,15 +98,11 @@ def fetch_all_tasks(creds):
 # Publish tasks over MQTT
 # -------------------------------------------------------------------
 def publish_tasks(tasks):
-    mqttClient.connect(mqtt_broker, mqtt_port, 60)
-    for task in tasks:
-        # Publish each task as one JSON message
-        payload = json.dumps(task, sort_keys=True)
-        # Publish the task to the MQTT topic
-        mqttClient.publish(mqtt_topic, payload)
-        time.sleep(0.05)  # small delay to avoid flooding
-    mqttClient.disconnect()
-    print(f"* [MQTT] Published {len(tasks)} tasks to MQTT topic '{mqtt_topic}'")
+    # Publish all tasks as a single JSON message
+    payload = json.dumps(tasks, sort_keys=True)
+    # Publish the tasks to the MQTT topic
+    mqttClient.publish(mqtt_topic, payload, retain=True)
+    print(f"* [MQTT] Published all tasks ({len(tasks)}) to MQTT topic '{mqtt_topic}'")
 
 def PrintTasks(tasks):
     print(f"* [SERVER] Fetched {len(tasks)} tasks:")
@@ -122,8 +118,8 @@ def PrintTasks(tasks):
 # -------------------------------------------------------------------
 # MAIN ENTRYPOINT
 # -------------------------------------------------------------------
-last_published_JSON = "" # store last published JSON to avoid duplicates
 def main():
+    last_published_JSON = "" # store last published JSON to avoid duplicates
     mqttClient.loop_start()
 
     while True:
