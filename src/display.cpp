@@ -76,8 +76,9 @@ void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent,
   if (TASK_POINTER >= startIdx + MAX_TASKS_DISPLAYED && 
         (TASKS_POINTER_DISPLAY_POSITION == MAX_TASKS_DISPLAYED - 1 
         || TASKS_POINTER_DISPLAY_POSITION == 0)) {
-    startIdx = TASK_POINTER - MAX_TASKS_DISPLAYED; // Scroll down when TASK_POINTER exceeds the visible range
-  } else if (TASK_POINTER < MAX_TASKS_DISPLAYED) {
+    startIdx = TASK_POINTER - (MAX_TASKS_DISPLAYED - 1); // Scroll down when TASK_POINTER exceeds the visible range
+  } else if (TASK_POINTER < MAX_TASKS_DISPLAYED && 
+             TASKS_POINTER_DISPLAY_POSITION == 0) {
     startIdx = 0; // Scroll up when TASK_POINTER goes above the visible range
   }
   // Only display up to MAX_TASKS_DISPLAYED tasks, starting from TASK_POINTER
