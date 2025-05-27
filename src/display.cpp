@@ -43,7 +43,31 @@ void SplashScreen(int INIT) {
     tft.setFreeFont(&FreeSerifItalic9pt7b);
     tft.setCursor(175, 176 + 9);
     tft.print("Configuring MQTT");
+    while (!mqtt.connected() && millis() - startAttemptTime < requestTimeout) {
+      drawLoadingCircleAnimation(234, 261, TFT_PURPLE, TFT_LIGHTGREY);
+      delay(500); // Wait for MQTT to connect
+    }
   }
+}
+
+void drawLoadingCircleAnimation(int cx, int cy, uint16_t color1, uint16_t color2) {
+  // Draw loading circle animation
+      static int angle = 0;
+      int centerX = cx; // Adjust as needed for your display
+      int centerY = cy;
+      int radius = 13;
+      int dotRadius = 2;
+      // Erase previous circle (draw white over it)
+      tft.fillCircle(centerX, centerY, radius + dotRadius + 2, TFT_WHITE);
+      // Draw 12 dots around the circle
+      for (int j = 0; j < 12; ++j) {
+        float theta = (angle + j * 30) * 3.14159 / 180.0;
+        int x = centerX + cos(theta) * radius;
+        int y = centerY + sin(theta) * radius;
+        uint16_t color = (j == 0) ? color1 : color2;
+        tft.fillCircle(x, y, dotRadius, color);
+      }
+      angle = (angle + 30) % 360;
 }
 
 void HelpingLines() {
@@ -72,41 +96,57 @@ void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent,
     const int radius = boxSize / 2;
     int text_y_indent = FirstY; // Y indent for text
   
+    tft.setTextColor(TFT_BLACK);
   // Adjust startIdx based on TASK_POINTER movement
   if (TASK_POINTER >= startIdx + MAX_TASKS_DISPLAYED && 
         (TASKS_POINTER_DISPLAY_POSITION == MAX_TASKS_DISPLAYED - 1 
         || TASKS_POINTER_DISPLAY_POSITION == 0)) {
     startIdx = TASK_POINTER - (MAX_TASKS_DISPLAYED - 1); // Scroll down when TASK_POINTER exceeds the visible range
-  } else if (TASK_POINTER < MAX_TASKS_DISPLAYED && 
-             TASKS_POINTER_DISPLAY_POSITION == 0) {
-    startIdx = 0; // Scroll up when TASK_POINTER goes above the visible range
+  } else if (TASK_POINTER < startIdx && 
+             (TASKS_POINTER_DISPLAY_POSITION == 0)) {
+    startIdx = TASK_POINTER; // Scroll up when TASK_POINTER goes above the visible range
   }
   // Only display up to MAX_TASKS_DISPLAYED tasks, starting from TASK_POINTER
-  int endIdx = std::min((int)list.size(), startIdx + MAX_TASKS_DISPLAYED);
+  int endIdx = std::min((int)list.size(), startIdx + (MAX_TASKS_DISPLAYED));
   for (int i = startIdx; i < endIdx; ++i) {
     Task* t = list[i];
-    int cx = TaskIndent + radius;
+    
     int cy = text_y_indent + (containerHeight / 2);
-
+    int cx = TaskIndent + radius;
+    if (t->parentId.length() > 0) {
+      // renew position if it is child task
+      cx = ChildIndent + TaskIndent + radius;
+    } 
 
     // 1) checkbox as circle
     if (t->completed) {
+      tft.setTextColor(TFT_DARKGREY);
       tft.fillCircle(cx, cy, radius, TFT_BLACK);
     } else {
+      tft.setTextColor(TFT_BLACK);
       tft.fillCircle(cx, cy, radius, TFT_WHITE);
     }
     tft.drawCircle(cx, cy, radius, TFT_BLACK);
 
     // 2) title
-    tft.setCursor(TaskIndent + boxSize + textIndent, text_y_indent + 18);
-    tft.setTextColor(TFT_BLACK);
+    if (t->parentId.length() > 0) {
+      // If this task has a parent, indent it further;
+      tft.setCursor(ChildIndent + TaskIndent + boxSize + textIndent, text_y_indent + 18);
+    } else{
+      tft.setCursor(TaskIndent + boxSize + textIndent, text_y_indent + 18);
+    }
     tft.setFreeFont(&FreeSans9pt7b);
     tft.print(t->title);
     
     // 3) due date
     if (t->due.length()) {
-      tft.setCursor(TaskIndent + boxSize + textIndent, text_y_indent + 35);
-      tft.setTextColor(TFT_BLACK);
+      if (t->parentId.length() > 0) {
+        // If this task has a parent, indent it further;
+        tft.setCursor(ChildIndent + TaskIndent + boxSize + textIndent, text_y_indent + 35);
+      } else {
+        tft.setCursor(TaskIndent + boxSize + textIndent, text_y_indent + 35);
+      }
+    
       tft.setFreeFont(&FreeSerifItalic9pt7b);
       // Convert RFC 3339 timestamp to desired format
       struct tm timeinfo;
@@ -119,13 +159,24 @@ void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent,
       }
     }
     text_y_indent += containerHeight;
-    
-    // 4) children (show all children for visible parent)
-    if (t->children.size()) {
-      drawTasks(t->children, text_y_indent, TaskIndent + ChildIndent, ChildIndent, 0, MAX_TASKS_DISPLAYED);
+
+    // Draw dashed line below each task container
+    int dashLength = 8;
+    int gapLength = 6;
+    int yLine = text_y_indent - 1;
+    for (int x = 0; x < tft.width(); x += dashLength + gapLength) {
+      int xEnd = x + dashLength;
+      if (xEnd > tft.width()) xEnd = tft.width();
+      tft.drawLine(x, yLine, xEnd, yLine, TFT_LIGHTGREY);
     }
+    
+    // // 4) children (show all children for visible parent)
+    // if (t->children.size()) {
+    //   drawTasks(t->children, text_y_indent, TaskIndent + ChildIndent, ChildIndent, 0, MAX_TASKS_DISPLAYED);
+    // }
   }
 }
+
 
 // Flattens the task tree into a flat list with indentation levels
 void flattenTasks(const std::vector<Task*>& roots, std::vector<std::pair<Task*, int>>& 
@@ -311,25 +362,34 @@ void drawStatusBar(bool (&ConnectionStatus)[2], String Wifi_SSID, String Title, 
 
 }
 
-void drawLoadingCircleAnimation(int cx, int cy, uint16_t color1, uint16_t color2) {
-  // Draw loading circle animation
-      static int angle = 0;
-      int centerX = cx; // Adjust as needed for your display
-      int centerY = cy;
-      int radius = 13;
-      int dotRadius = 2;
-      // Erase previous circle (draw white over it)
-      tft.fillCircle(centerX, centerY, radius + dotRadius + 2, TFT_WHITE);
-      // Draw 12 dots around the circle
-      for (int j = 0; j < 12; ++j) {
-        float theta = (angle + j * 30) * 3.14159 / 180.0;
-        int x = centerX + cos(theta) * radius;
-        int y = centerY + sin(theta) * radius;
-        uint16_t color = (j == 0) ? color1 : color2;
-        tft.fillCircle(x, y, dotRadius, color);
-      }
-      angle = (angle + 30) % 360;
+int countdown = 5;
+long syncStartTime = 0;
+void drawSyncCountdown(int firstY) {
+  syncStartTime = millis();
+  while (syncCountDown) {
+    // Draw countdown animation
+    tft.fillRect(382, firstY - 15, tft.width() - 382, 20, TFT_LIGHTGREY); // Clear previous countdown text
+    tft.setCursor(382, firstY);
+    tft.setTextColor(TFT_BLACK);
+    tft.setFreeFont(&FreeSansOblique9pt7b);
+    tft.print(countdown);
+    tft.print(" sec to Syncing...");
+    if (countdown > 0 && millis() - syncStartTime < 1000) {
+      countdown--;
+      syncStartTime = millis(); // Reset start time for next countdown
+    } 
+    else if (countdown == 0) {
+      allTasks[TASKS_POINTER]->completed = allTasks[TASKS_POINTER]->completed ? false : true; // Toggle completion status
+      publishChanges(allTasks); // Publish changes to MQTT
+      syncCountDown = false;
+      tft.print("Syncing Succsess!"); 
+      tft.fillRect(382, firstY - 15, tft.width() - 382, 20, TFT_LIGHTGREY); // Clear countdown text
+    }
+    needDisplayUpdate = true; // Set flag to update display
+  }
+  countdown = 5; // Reset countdown for next sync
 }
+
 int i = 0;
 void testDisplay()  {
 

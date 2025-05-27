@@ -4,6 +4,7 @@
 #include "config.h"
 #include <vector>
 #include <ArduinoJson.h>
+#include "secrets.h"
 
 unsigned long lastAttemptTime = 0;
 
@@ -57,7 +58,8 @@ void buildTree() {
     allTasks.clear();
     for (const auto& r : rawTasks) {
         Task* t = new Task{
-        r.task_id,
+        r.list_id,
+        r.task_id,  // Use task_id as unique identifier
         r.title,
         r.completed,
         r.due,
@@ -160,9 +162,9 @@ void setupWiFi(const char* ssid, const char* password) {
 // --------------------------------------------------------
 
 const unsigned long retryInterval = 5000; // 5 seconds retry interval
-void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port,const char* topic) {
+void mqttConnect(const char* MQTT_SERVER, const uint16_t MQTT_PORT,const char* topic) {
     mqtt.setBufferSize(8192); // Adjust size as needed
-    mqtt.setServer(mqtt_server, mqtt_port);
+    mqtt.setServer(MQTT_SERVER, MQTT_PORT);
     mqtt.setCallback(mqttCallback);
     // Non-blocking MQTT connect: try once, don't block if failed
     if (!mqtt.connected() && !SPLASH_SCREEN) {
@@ -170,7 +172,7 @@ void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port,const char* t
             lastAttemptTime = millis(); // Update the last attempt time
             if (mqtt.connect("Dzuumirrah ESP32")) {
                 Serial.println("Connecting to MQTT server...");
-                Serial.printf("Connected to MQTT server at [%s:%d], subscribing to topic: [%s]\n", mqtt_server, mqtt_port, topic);
+                Serial.printf("Connected to MQTT server at [%s:%d], subscribing to topic: [%s]\n", MQTT_SERVER, MQTT_PORT, topic);
                 if (!mqtt.subscribe(topic)) {
                     Serial.println("Failed to subscribe to topic.");
                 }
@@ -202,6 +204,33 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     parseJson(incoming);            // fill rawTasks[]
     buildTree();                    // rebuild roots/allTasks]
     needDisplayUpdate = true; // Set flag to update display
+}
+
+void publishChanges(const std::vector<Task*>& roots) {
+    // 1) Create a JSON document
+    JsonDocument doc; // Adjust size as needed
+    JsonObject root = doc.to<JsonObject>();
+    root["action"] = "update";
+    JsonArray arr = root.createNestedArray("tasks");
+
+    for (auto* t : roots) {
+        JsonObject o = arr.add<JsonObject>();
+        o["list_id"]   = t->task_id;
+        o["task_id"]   = t->id;
+        o["title"]     = t->title;
+        o["status"]    = t->completed ? "completed" : "needsAction";
+    }
+    String output;
+    serializeJson(doc, output);
+    mqtt.publish(topic_task_update, output.c_str(), true);
+
+    // 4) Publish to MQTT
+    if (mqtt.connected()) {
+        mqtt.publish(topic_task_update, output.c_str(), true); // true for retained message
+        Serial.printf("Published changes to MQTT %s\n", output.c_str());
+    } else {
+        Serial.println("MQTT not connected, cannot publish changes.");
+    }
 }
 
 

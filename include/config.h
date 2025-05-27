@@ -24,6 +24,10 @@ void setupWiFi(const char* ssid, const char* password);
 void mqttConnect(const char* mqtt_server, const uint16_t mqtt_port, const char* mqtt_topic_tasks);
 // Callback for MQTT communication.
 void mqttCallback(char* topic, byte* payload, unsigned int length);
+// Function to publish changes to MQTT
+// parameters:
+// - roots: vector of Task pointers representing the roots of the task tree
+void publishChanges(const std::vector<Task*>& roots);
 
 // --------------------------------------------------------
 //                TASK PARSING AND STORAGE
@@ -34,6 +38,8 @@ extern std::vector<Task*> roots;
 extern std::vector<Task*> allTasks;
 void parseJson(const String& payload);
 void buildTree();
+
+extern bool syncCountDown;
 
 // --------------------------------------------------------
 //                    BUTTONS AND PAGES
@@ -50,6 +56,7 @@ extern uint8_t PAGE_POINTERS;
 extern const uint8_t MAX_TASK_DISPLAY;
 extern int TASKS_POINTER;
 extern int TASKS_POINTER_DISPLAY_POSITION;
+extern bool buttonYesPressedAgain;
 
 // -------------------------------------------------------------------
 //                  DISPLAY CONFIGURATION
@@ -59,6 +66,7 @@ extern int TASKS_POINTER_DISPLAY_POSITION;
 extern byte DISPLAY_ROTATION;
 extern bool SPLASH_SCREEN; // Flag to show splash screen on first boot
 extern bool needDisplayUpdate;
+extern int FIRST_TASK_Y_INDENT;
 // Pointer to the cursor position on the TFT display
 // show splash screen on TFT display on first boot
 // parameters:
@@ -84,6 +92,11 @@ void drawTasks(const std::vector<Task*>& list, int& FirstY, int TaskIndent,
 // - Title: title string to display. Change to "Connecting..." if MQTT not connected
 // - Clock: clock string to display
 void drawStatusBar(bool (&ConnectionStatus)[2], String Wifi_SSID, String Title, String ClockTime);
+// Draw sync countdown on the TFT display
+// parameters:
+// - firstY: first Y position to start drawing the countdown. In this case, firstY is same as
+//   child y indent
+void drawSyncCountdown(int firstY);
 
 // --------------------------------------------------------
 //                    RTC CONFIGURATION

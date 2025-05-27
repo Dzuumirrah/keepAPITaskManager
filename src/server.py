@@ -27,6 +27,7 @@ TOKEN_FILE       = 'GoogleCredential\\token.json'
 mqtt_broker             = os.getenv("MQTT_BROKER")
 mqtt_port               = int(os.getenv("MQTT_PORT"))
 mqtt_topic              = os.getenv("MQTT_TOPIC_T")
+mqtt_topic_sync         = os.getenv("MQTT_TOPIC_SYNC")  
 
 # -------------------------------------------------------------------
 # Google Keep and MQTT Initialization
@@ -58,7 +59,34 @@ mqttClient = mqtt.Client(client_id="MQTTGoogleKeepESP32")
 @mqttClient.connect_callback()
 def on_connect(client, userdata, connect_flags, reason_code, properties):
     print("! [MQTT] Connected with result code ", str(reason_code), '\n\n')
-    client.subscribe(mqtt_topic)
+    client.subscribe(mqtt_topic_sync)  # Subscribe to the sync topic
+
+@mqttClient.message_callback()
+def message_callback(client, userdata, message):
+    print(f"! [MQTT] Received message on topic {message.topic}: {message.payload.decode()}")
+    # Parse the received message and update Google Tasks
+    try:
+        creds = get_credentials()
+        service = build('tasks', 'v1', credentials=creds)
+        payload = json.loads(message.payload.decode())
+
+        if payload.get("action") == "update":
+            # Update existing tasks
+            for task_data in payload.get("tasks", []):  # Iterate over each task in the array
+                list_id = task_data.get("list_id")
+                task_id = task_data.get("task_id")
+                title   = task_data.get("title")
+                updates = {
+                    'status': task_data.get("status"),
+                }
+                print(f"* [Google Tasks] Task {title} [{task_id}] in list [{list_id}] updated.")
+
+                service.tasks().patch(tasklist=list_id, task=task_id, body=updates).execute()
+        else:
+            print("! [Google Tasks] Unknown action received in payload.")
+
+    except Exception as e:
+        print(f"! [Google Tasks] Error processing message: {e}")
 
 # -------------------------------------------------------------------
 # MQTT Connection

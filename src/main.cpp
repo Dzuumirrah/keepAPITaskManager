@@ -52,6 +52,7 @@ void setup() {
     }
     Serial.println("Starting device . . .");
     tft.init();
+    tft.setTextWrap(false);
     tft.setTextSize(1);
     SplashScreen();
     if (UsingConnection){
@@ -129,6 +130,8 @@ void loop() {
         // drawTasks(roots, FIRST_TASK_Y_INDENT, TASKS_X_INDENT, CHILD_INDENT);
         needDisplayUpdate = false;
     }
+
+    drawSyncCountdown(FIRST_TASK_Y_INDENT + (48 * TASKS_POINTER_DISPLAY_POSITION) + 35);
     // Reset last attempt time for WiFi and MQTT connection
     if (UsingConnection) {
         if (WiFi.status() != WL_CONNECTED && millis() - lastConnectAttempt > 5000) {

@@ -18,7 +18,8 @@ struct RawTask {
 
 // No change to Task’s pointers/children, just add `notes`:
 struct Task {
-  String id;
+  String task_id;
+  String id;           // ← use this as the unique identifier
   String title;
   bool completed;
   String due;
