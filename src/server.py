@@ -63,7 +63,7 @@ def on_connect(client, userdata, connect_flags, reason_code, properties):
 
 @mqttClient.message_callback()
 def message_callback(client, userdata, message):
-    print(f"! [MQTT] Received message on topic {message.topic}: {message.payload.decode()}")
+    # print(f"! [MQTT] Received message on topic {message.topic}: {message.payload.decode()}")
     # Parse the received message and update Google Tasks
     try:
         creds = get_credentials()
@@ -79,9 +79,18 @@ def message_callback(client, userdata, message):
                 updates = {
                     'status': task_data.get("status"),
                 }
-                print(f"* [Google Tasks] Task {title} [{task_id}] in list [{list_id}] updated.")
-
+                # Fetch the current task from Google Tasks
+                current_task = service.tasks().get(tasklist=list_id, task=task_id).execute()
+                # Check if there are any changes between the current task and the updates
+                has_changes = False
+                for key, value in updates.items():
+                    if current_task.get(key) != value:
+                        has_changes = True
+                        break
+                if not has_changes:
+                    continue
                 service.tasks().patch(tasklist=list_id, task=task_id, body=updates).execute()
+                print(f"* [Google Tasks] Updated task '{title}'")
         else:
             print("! [Google Tasks] Unknown action received in payload.")
 
@@ -160,16 +169,17 @@ def main():
             current_JSON = json.dumps(tasks, sort_keys=True)
 
             if current_JSON == last_published_JSON:
-                print("* [MQTT] NO CHANGE DETECTED.")
+                # print("* [MQTT] NO CHANGE DETECTED.")
+                pass
             else:
                 print("! [MQTT] CHANGE DETECTED, publishing tasks...")
                 # Print tasks in a readable format
-                PrintTasks(tasks)
+                # PrintTasks(tasks)
                 # Publish via MQTT
                 publish_tasks(tasks)
                 last_published_JSON = current_JSON
 
-            time.sleep(10)  # Wait for 10 seconds before fetching tasks again
+            time.sleep(0.1)  # Wait for 100 milliseconds before fetching tasks again
         except KeyboardInterrupt:
             print("! [MQTT] Stopping the MQTT client...")
             mqttClient.loop_stop()
